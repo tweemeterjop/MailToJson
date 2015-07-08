@@ -4,7 +4,7 @@
 ## (c) 2013 Newsman App
 ## https://github.com/Newsman/MailToJson
 
-import sys, urllib2, email, re, csv, StringIO, base64, json, datetime, pprint
+import sys, urllib2, email, re, csv, StringIO, base64, json, datetime, pprint, chardet
 from optparse import OptionParser
 
 VERSION = "1.3"
@@ -22,7 +22,6 @@ email_re = re.compile(
     r'|\[(25[0-5]|2[0-4]\d|[0-1]?\d?\d)(\.(25[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}\]$', re.IGNORECASE)
 
 email_extract_re = re.compile("<(([.0-9a-z_+-=]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,9}))>", re.M|re.S|re.I)
-filename_re = re.compile("filename=\"(.+)\"|filename=([^;\n\r\"\']+)", re.I|re.S)
 
 class MailJson:
     def __init__(self, content):
@@ -82,7 +81,7 @@ class MailJson:
                 hv = h_decoded[0]
                 h_encoding = h_decoded[1]
                 if h_encoding is None:
-                    h_encoding = "ascii"
+                    h_encoding = chardet.detect(hv)["encoding"].lower()
                 else:
                     h_encoding = h_encoding.lower()
 
@@ -203,10 +202,8 @@ class MailJson:
             content_disposition = part.get("Content-Disposition", None)
             if content_disposition:
                 # we have attachment
-                r = filename_re.findall(content_disposition)
-                if r:
-                    filename = sorted(r[0])[1]
-                else:
+                filename = part.get_filename()
+                if not filename:
                     filename = "undefined"
 
                 a = { "filename": filename, "content": base64.b64encode(part.get_payload(decode = True)), "content_type": part.get_content_type() }
